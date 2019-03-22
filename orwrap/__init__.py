@@ -35,5 +35,8 @@ class Solver(pywraplp.Solver):
         """
         return MakeMatrixConstraint(self, coef, lin_expr, lb, ub)
 
-    def NumVarDict(self, index, lb: 'double', ub: 'double', name: 'std::string const &'):
+    def NumVarDict(self, index, lb, ub, name):
         return {i: self.NumVar(lb, ub, name+"_"+str(i)) for i in index}
+
+    def BoolVarDict(self, index, name):
+        return {i: self.BoolVar(name+"_"+str(i)) for i in index}
