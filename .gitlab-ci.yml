@@ -11,7 +11,7 @@ pytest-and-do-cov:
   script:
     - pip install -r requirements.txt
     - pip install pytest pytest-cov
-    - python setup.py setup_ext --inplace
+    - python setup.py build_ext --inplace
     - pytest --cov
   coverage: '/TOTAL.+ ([0-9]{1,3}%)/'
 
