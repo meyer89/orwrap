@@ -64,7 +64,7 @@ release_dist:
   image: python:3.6
   dependencies:
     - build_sdist
-    - build_sdist_3_7
+    - build_bdist_3_7
   script:
     - pip install devpi-client
     - devpi use $DEVPI_URL
