@@ -31,7 +31,6 @@ class Solver(pywraplp.Solver):
         :param lin_expr: list if <cols> entries containing linear expressions
         :param lb: np.ndarray[rows] with lower bound
         :param ub: np.ndarray[rows] with upper bound
-        :return:
         """
         return MakeMatrixConstraint(self, coef, lin_expr, lb, ub)
 

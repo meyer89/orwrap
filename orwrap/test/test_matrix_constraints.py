@@ -41,5 +41,5 @@ def create_solver_slow(coef, lb, ub):
 
 def init_solver(fcn, n_vars):
     solver = fcn('Test', Solver.GLOP_LINEAR_PROGRAMMING)
-    lin_expr = [solver.NumVar(lb=0, ub=10, name='x' + str(i)) for i in range(n_vars)]
+    lin_expr = [(i+1) * solver.NumVar(lb=0, ub=10, name='x' + str(i)) + i for i in range(n_vars)]
     return solver, lin_expr
