@@ -1,0 +1,56 @@
+stages:
+- test
+- package
+- release
+
+pytest-and-do-cov:
+  stage: test
+  image: python:3.6
+  tags:
+    - docker
+  script:
+    - pip install -r requirements.txt
+    - pip install pytest pytest-cov
+    - python setup.py setup_ext --inplace
+    - pytest --cov
+  coverage: '/TOTAL.+ ([0-9]{1,3}%)/'
+
+pylint:
+  stage: test
+  image: python:3.6
+  tags:
+    - docker
+  script:
+    - pip install -r requirements.txt
+    - pip install pylint pylint-exit
+    - pylint orwrap || pylint-exit $?
+
+build_sdist:
+  stage: package
+  tags:
+    - docker
+  image: python:3.6
+  script:
+    - pip install -r requirements.txt
+    - pip install setuptools wheel mdToRst
+    - mdToRst README.md > README.rst
+    - python setup.py sdist
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 1 day
+
+release_dist:
+  stage: release
+  only:
+    - master
+  tags:
+    - docker
+  image: python:3.6
+  dependencies:
+    - build_sdist
+  script:
+    - pip install devpi-client
+    - devpi use $DEVPI_URL
+    - devpi login $DEVPI_USER --password $DEVPI_PASSWORD
+    - devpi upload dist/*

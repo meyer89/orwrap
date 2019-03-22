@@ -25,6 +25,6 @@ setup(
     version=ortools.__version__,
     author="Marian Meyer",
     ext_modules=cythonize(extensions),
-    install_requires=["ortools==" + ortools.__version__],
+    install_requires=["ortools==" + ortools.__version__, "numpy"],
     packages=find_packages()
 )
