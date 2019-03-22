@@ -1,6 +1,6 @@
 from time import time
 import numpy as np
-from ortools_ext import Solver, pywraplp
+from orwrap import Solver, pywraplp
 
 
 def test_speedup_lpformat(n_constraints=100):

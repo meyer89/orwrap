@@ -4,7 +4,7 @@ from Cython.Build import cythonize
 import ortools
 
 extensions = [
-    Extension("ortools_ext.matrix_constraints", ["ortools_ext/matrix_constraints.pyx"],
+    Extension("orwrap.matrix_constraints", ["orwrap/matrix_constraints.pyx"],
         include_dirs=[os.path.abspath("include")],
         libraries=["ortools"],
         library_dirs=[os.path.join(ortools.__path__[0], ".libs")],
@@ -14,7 +14,7 @@ extensions = [
 
 # call the setup function for the compilation
 setup(
-    name="ortools_ext",
+    name="orwrap",
     version=ortools.__version__,
     author="Marian Meyer",
     ext_modules=cythonize(extensions),

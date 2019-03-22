@@ -1,6 +1,6 @@
 from ortools.linear_solver import pywraplp
 try:
-    from ortools_ext.matrix_constraints import MakeMatrixConstraint
+    from orwrap.matrix_constraints import MakeMatrixConstraint
 except ImportError:
     print("Could not import cythonized MakeMatrixConstraint!")
 
@@ -34,3 +34,6 @@ class Solver(pywraplp.Solver):
         :return:
         """
         return MakeMatrixConstraint(self, coef, lin_expr, lb, ub)
+
+    def NumVarDict(self, index, lb: 'double', ub: 'double', name: 'std::string const &'):
+        return {i: self.NumVar(lb, ub, name+"_"+str(i)) for i in index}
