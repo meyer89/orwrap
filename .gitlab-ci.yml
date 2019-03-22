@@ -34,7 +34,22 @@ build_sdist:
     - pip install -r requirements.txt
     - pip install setuptools wheel mdToRst
     - mdToRst README.md > README.rst
-    - python setup.py sdist
+    - python setup.py sdist bdist_wheel
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 1 day
+
+build_bdist_3_7:
+  stage: package
+  tags:
+    - docker
+  image: python:3.7
+  script:
+    - pip install -r requirements.txt
+    - pip install setuptools wheel mdToRst
+    - mdToRst README.md > README.rst
+    - python setup.py bdist_wheel
   artifacts:
     paths:
       - dist/
@@ -49,6 +64,7 @@ release_dist:
   image: python:3.6
   dependencies:
     - build_sdist
+    - build_sdist_3_7
   script:
     - pip install devpi-client
     - devpi use $DEVPI_URL
