@@ -1,9 +1,10 @@
 # cython: language_level=3
 # distutils: language=c++
+from libcpp.vector cimport vector
+from cython.operator cimport dereference as deref, preincrement as inc
 from ortools.linear_solver.linear_solver_natural_api import OFFSET_KEY, CastToLinExp
 from ortools.linear_solver.pywraplp import Solver
 from scipy.sparse import isspmatrix, isspmatrix_coo, coo_matrix
-from numpy import asarray
 
 
 # Define the Swig struct which has the real pointer to MPVariable/MPSolver hidden inside
@@ -25,6 +26,18 @@ cdef extern from "ortools/linear_solver/linear_solver.h" namespace "operations_r
         MPConstraint* MakeRowConstraint()
 
 
+# define a struct used in linear expression
+ctypedef struct LinExprEntry:
+    MPVariable *var
+    double weight
+
+
+# define simple C-structure for linear expression with variables and offset
+ctypedef struct LinExpr:
+    vector[LinExprEntry] entries
+    double offset
+
+
 # Wrapper for the internal function which converts the data
 def MakeMatrixConstraint(solver, coefficients, lin_expr, double[:] lb, double[:] ub):
     # Make sure it is the right SwigPyObject
@@ -36,27 +49,49 @@ def MakeMatrixConstraint(solver, coefficients, lin_expr, double[:] lb, double[:]
     # extract MPSolver from SWIG
     cdef SwigPyObject* swig_obj = <SwigPyObject*?>solver.this
     cdef MPSolver* solver_ptr = <MPSolver*>swig_obj.ptr
-    
-    # Extract the linear expression.
-    lin_coef = [CastToLinExp(x).GetCoeffs() for x in lin_expr]
-    offset = asarray([x.pop(OFFSET_KEY, 0.0) for x in lin_coef])
+
+    # Extract the linear expression
+    cdef vector[LinExpr] vec_lin_expr
+    for x in lin_expr:
+        vec_lin_expr.push_back(pycoefs_to_linexpr(CastToLinExp(x).GetCoeffs()))
 
     if isspmatrix(coefficients):
         coef_coo = coefficients if coefficients.format == 'coo' else coo_matrix(coefficients)
-        return MakeMatrixConstraintSparse(solver_ptr, coef_coo.data, coef_coo.col, coef_coo.row, lin_coef, offset, lb, ub)
+        return MakeMatrixConstraintSparse(solver_ptr, coef_coo.data, coef_coo.col, coef_coo.row, vec_lin_expr, lb, ub)
     else:
         # call internal function
-        return MakeMatrixConstraintDense(solver_ptr, coefficients, lin_coef, offset, lb, ub)
+        return MakeMatrixConstraintDense(solver_ptr, coefficients, vec_lin_expr, lb, ub)
 
 
-cdef MakeMatrixConstraintSparse(MPSolver* solver_ptr, double[:] coef_data, int[:] coef_col, int[:] coef_row, expr_coef, double[:] expr_offset, double[:] lb, double[:] ub):
+cdef LinExpr pycoefs_to_linexpr(coefs_in):
+    cdef SwigPyObject* swig_obj
+    cdef MPVariable* current_variable
+    cdef double term_factor
+
+    # initialize variables for the linear expression struct
+    cdef vector[LinExprEntry] entries
+    cdef double offset = coefs_in.pop(OFFSET_KEY, 0.0)
+
+    # iterate over the variables
+    for py_var, term_factor in coefs_in.items():
+        swig_obj = <SwigPyObject*?>py_var.this
+        current_variable = <MPVariable*?>swig_obj.ptr
+        # Now we have a pointer of MPVariable and can build or small struct with the data
+        if term_factor != 0:
+            entries.push_back(LinExprEntry(var=current_variable, weight=term_factor))
+
+    # return the struct with the entries
+    return LinExpr(entries=entries, offset=offset)
+
+
+cdef MakeMatrixConstraintSparse(MPSolver* solver_ptr, double[:] coef_data, int[:] coef_col, int[:] coef_row, vector[LinExpr] lin_expr, double[:] lb, double[:] ub):
     # Extract the sizes of the matrix
     cdef Py_ssize_t n_coef = coef_data.shape[0]
 
     # Variable definition with static type information
     cdef MPConstraint* current_constraint
     cdef double constraint_offset
-    cdef int i_constraint
+    cdef int i_constraint, col
 
     # create a new constraint without any information
     current_constraint = solver_ptr.MakeRowConstraint()
@@ -78,8 +113,9 @@ cdef MakeMatrixConstraintSparse(MPSolver* solver_ptr, double[:] coef_data, int[:
             i_constraint = coef_row[i]
 
         # handle this in the sparse matrix
-        constraint_offset += coef_data[i] * expr_offset[coef_col[i]]
-        AddLinExpr(current_constraint, coef_data[i], expr_coef[coef_col[i]])
+        col = coef_col[i]
+        constraint_offset += coef_data[i] * lin_expr[col].offset
+        AddLinExpr(current_constraint, coef_data[i], lin_expr[col])
 
     # finalize the last constraint
     current_constraint.SetBounds(lb[i_constraint] - constraint_offset, ub[i_constraint] - constraint_offset)
@@ -89,7 +125,7 @@ cdef MakeMatrixConstraintSparse(MPSolver* solver_ptr, double[:] coef_data, int[:
 
 
 # Define a function which takes a dense matrix with coefficients and linear expression lists for each column
-cdef MakeMatrixConstraintDense(MPSolver* solver_ptr, double[:,:] coefficients, expr_coef, double[:] expr_offset, double[:] lb, double[:] ub):
+cdef MakeMatrixConstraintDense(MPSolver* solver_ptr, double[:,:] coefficients, vector[LinExpr] lin_expr, double[:] lb, double[:] ub):
     # Extract the sizes of the matrix
     cdef Py_ssize_t rows = coefficients.shape[0]
     cdef Py_ssize_t cols = coefficients.shape[1]
@@ -111,8 +147,8 @@ cdef MakeMatrixConstraintDense(MPSolver* solver_ptr, double[:,:] coefficients, e
             # check if the calculation is actually needed
             if coefficient_factor != 0:
                 # add the offset to the constraint offset
-                constraint_offset += coefficient_factor * expr_offset[col]
-                AddLinExpr(current_constraint, coefficient_factor, expr_coef[col])
+                constraint_offset += coefficient_factor * lin_expr[col].offset
+                AddLinExpr(current_constraint, coefficient_factor, lin_expr[col])
                     
         # Set the bounds with the constant offset in the expression
         current_constraint.SetBounds(lb[row] - constraint_offset, ub[row] - constraint_offset)
@@ -122,14 +158,10 @@ cdef MakeMatrixConstraintDense(MPSolver* solver_ptr, double[:,:] coefficients, e
 
 
 # add one single linear expression with weight to the specified constraint
-cdef AddLinExpr(MPConstraint* constraint, double weight, expr_coef):
-    cdef SwigPyObject* swig_obj
-    cdef MPVariable* current_variable
-    cdef double term_factor
-
-    # iterate over the variables. This still handles with Python objects and could be done faster
-    for py_var, term_factor in expr_coef.items():
-        swig_obj = <SwigPyObject*?>py_var.this
-        current_variable = <MPVariable*?>swig_obj.ptr
-        # Now we have a pointer of MPVariable and can use the C-function for the coefficient
-        constraint.SetCoefficient(current_variable, term_factor * weight)
+cdef void AddLinExpr(MPConstraint* constraint, double weight, LinExpr expr_coef):
+    cdef vector[LinExprEntry].iterator it = expr_coef.entries.begin()
+    cdef LinExprEntry current_entry
+    while it != expr_coef.entries.end():
+        current_entry = deref(it)
+        constraint.SetCoefficient(current_entry.var, current_entry.weight * weight)
+        inc(it)
