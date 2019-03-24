@@ -1,4 +1,5 @@
 from ortools.linear_solver import pywraplp
+from ortools.linear_solver.linear_solver_natural_api import Constant
 try:
     from orwrap.matrix_constraints import MakeMatrixConstraint
 except ImportError:
@@ -22,6 +23,9 @@ status_txt = {
 
 
 class Solver(pywraplp.Solver):
+    # define an expression which does nothing
+    ZeroExpr = Constant(0)
+
     def MakeMatrixConstraint(self, coef, lin_expr, lb, ub):
         """
         Allows fast insertion of many constraints at once.

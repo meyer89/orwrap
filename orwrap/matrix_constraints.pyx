@@ -1,6 +1,6 @@
 # cython: language_level=3
 # distutils: language=c++
-from ortools.linear_solver.linear_solver_natural_api import OFFSET_KEY
+from ortools.linear_solver.linear_solver_natural_api import OFFSET_KEY, CastToLinExp
 from ortools.linear_solver.pywraplp import Solver
 
 
@@ -36,7 +36,7 @@ def MakeMatrixConstraint(solver, double[:,:] coefficients, lin_expr, double[:] l
     cdef MPSolver* solver_ptr = <MPSolver*>swig_obj.ptr
     
     # Extract the linear expression.
-    lin_coef = [x.GetCoeffs() for x in lin_expr]
+    lin_coef = [CastToLinExp(x).GetCoeffs() for x in lin_expr]
     offset = [x.pop(OFFSET_KEY, 0.0) for x in lin_coef]
     
     # call internal function
