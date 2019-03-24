@@ -3,6 +3,7 @@
 from ortools.linear_solver.linear_solver_natural_api import OFFSET_KEY, CastToLinExp
 from ortools.linear_solver.pywraplp import Solver
 from scipy.sparse import isspmatrix, isspmatrix_coo, coo_matrix
+from numpy import asarray
 
 
 # Define the Swig struct which has the real pointer to MPVariable/MPSolver hidden inside
@@ -38,7 +39,7 @@ def MakeMatrixConstraint(solver, coefficients, lin_expr, double[:] lb, double[:]
     
     # Extract the linear expression.
     lin_coef = [CastToLinExp(x).GetCoeffs() for x in lin_expr]
-    offset = [x.pop(OFFSET_KEY, 0.0) for x in lin_coef]
+    offset = asarray([x.pop(OFFSET_KEY, 0.0) for x in lin_coef])
 
     if isspmatrix(coefficients):
         coef_coo = coefficients if coefficients.format == 'coo' else coo_matrix(coefficients)
@@ -48,7 +49,7 @@ def MakeMatrixConstraint(solver, coefficients, lin_expr, double[:] lb, double[:]
         return MakeMatrixConstraintDense(solver_ptr, coefficients, lin_coef, offset, lb, ub)
 
 
-cdef MakeMatrixConstraintSparse(MPSolver* solver_ptr, double[:] coef_data, int[:] coef_col, int[:] coef_row, expr_coef, expr_offset, double[:] lb, double[:] ub):
+cdef MakeMatrixConstraintSparse(MPSolver* solver_ptr, double[:] coef_data, int[:] coef_col, int[:] coef_row, expr_coef, double[:] expr_offset, double[:] lb, double[:] ub):
     # Extract the sizes of the matrix
     cdef Py_ssize_t n_coef = coef_data.shape[0]
 
@@ -88,7 +89,7 @@ cdef MakeMatrixConstraintSparse(MPSolver* solver_ptr, double[:] coef_data, int[:
 
 
 # Define a function which takes a dense matrix with coefficients and linear expression lists for each column
-cdef MakeMatrixConstraintDense(MPSolver* solver_ptr, double[:,:] coefficients, expr_coef, expr_offset, double[:] lb, double[:] ub):
+cdef MakeMatrixConstraintDense(MPSolver* solver_ptr, double[:,:] coefficients, expr_coef, double[:] expr_offset, double[:] lb, double[:] ub):
     # Extract the sizes of the matrix
     cdef Py_ssize_t rows = coefficients.shape[0]
     cdef Py_ssize_t cols = coefficients.shape[1]
