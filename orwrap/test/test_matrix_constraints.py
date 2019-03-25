@@ -1,14 +1,16 @@
 from time import time
+import pytest
 import numpy as np
+from scipy.sparse import csr_matrix, coo_matrix, issparse
 from orwrap import Solver, pywraplp
 
 
-def test_speedup_lpformat(n_constraints=100):
-    # create input for the constraints
-    lb = np.zeros(n_constraints)
-    ub = np.ones(n_constraints)
-    coef = np.tril(np.ones((n_constraints, n_constraints)))
-
+@pytest.mark.parametrize("coef, lb, ub", [
+    (np.tri(100), np.zeros(100), np.ones(100)),
+    (csr_matrix(np.tri(100)), np.zeros(100), np.ones(100)),
+    (coo_matrix(np.tri(200)), np.zeros(200), np.ones(200))
+])
+def test_speedup_lpformat(coef, lb, ub):
     # create the model the fast way with matrix constraints
     t0 = time()
     res_fast = create_solver_fast(coef, lb, ub)
@@ -32,6 +34,9 @@ def create_solver_fast(coef, lb, ub):
 
 
 def create_solver_slow(coef, lb, ub):
+    if issparse(coef):
+        coef = coef.toarray()
+
     solver, lin_expr = init_solver(pywraplp.Solver, coef.shape[1])
     for i, row in enumerate(coef):
         expr = solver.Sum((c * expr for c, expr in zip(row, lin_expr)))
