@@ -21,19 +21,11 @@ build_dist_3.7:
 
 build_dist_ppc_3.6:
   extends: .build_dist
-  tags:
-    - qemu
-  image:
-    name: $CI_REGITRY/docker/devpi-builder:3.6-ubuntu-ppc
-    entrypoint: [""]
+  image: $CI_REGITRY/docker/devpi-builder:3.6-ubuntu-ppc
 
 build_dist_ppc_3.7:
   extends: .build_dist
-  tags:
-    - qemu
-  image:
-    name: $CI_REGITRY/docker/devpi-builder:3.7-ubuntu-ppc
-    entrypoint: [""]
+  image: $CI_REGITRY/docker/devpi-builder:3.7-ubuntu-ppc
 
 release_dist:
   extends: .release_dist
