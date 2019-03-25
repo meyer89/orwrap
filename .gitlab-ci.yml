@@ -1,72 +1,28 @@
-stages:
-- test
-- package
-- release
+include:
+  - project: 'IFHT/gitlab-ci-templates'
+    file: '/python-package.yml'
 
-pytest-and-do-cov:
-  stage: test
-  image: python:3.6
-  tags:
-    - docker
-  script:
-    - pip install -r requirements.txt
-    - pip install pytest pytest-cov
-    - python setup.py build_ext --inplace
-    - pytest --cov
-  coverage: '/TOTAL.+ ([0-9]{1,3}%)/'
+pytest:
+  extends: .pytest
 
 pylint:
-  stage: test
-  image: python:3.6
-  tags:
-    - docker
-  script:
-    - pip install -r requirements.txt
-    - pip install pylint pylint-exit
-    - pylint orwrap || pylint-exit $?
+  extends: .pylint
 
-build_sdist:
-  stage: package
-  tags:
-    - docker
+build_dist_3.6:
+  extends: .build_dist
   image: python:3.6
-  script:
-    - pip install -r requirements.txt
-    - pip install setuptools wheel mdToRst
-    - mdToRst README.md > README.rst
-    - python setup.py sdist bdist_wheel
-  artifacts:
-    paths:
-      - dist/
-    expire_in: 1 day
 
-build_bdist_3_7:
-  stage: package
-  tags:
-    - docker
+build_dist_3.7:
+  extends: .build_dist
   image: python:3.7
-  script:
-    - pip install -r requirements.txt
-    - pip install setuptools wheel mdToRst
-    - mdToRst README.md > README.rst
-    - python setup.py bdist_wheel
-  artifacts:
-    paths:
-      - dist/
-    expire_in: 1 day
+
+build_dist_ppc_3.6:
+  extends: .build_dist
+  image: $CI_REGITRY/docker/python:3.6-ubuntu-ppc
+
+build_dist_ppc_3.7:
+  extends: .build_dist
+  image: $CI_REGITRY/docker/python:3.7-ubuntu-ppc
 
 release_dist:
-  stage: release
-  only:
-    - master
-  tags:
-    - docker
-  image: python:3.6
-  dependencies:
-    - build_sdist
-    - build_bdist_3_7
-  script:
-    - pip install devpi-client
-    - devpi use $DEVPI_URL
-    - devpi login $DEVPI_USER --password $DEVPI_PASSWORD
-    - devpi upload dist/*
+  extends: .release_dist
