@@ -2,6 +2,9 @@ include:
   - project: 'IFHT/gitlab-ci-templates'
     file: '/python-package.yml'
 
+variables:
+  BUILD_REQUIRE: cython ortools
+
 pytest:
   extends: .pytest
 
