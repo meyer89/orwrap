@@ -33,7 +33,7 @@ setup(
     version=ortools.__version__,
     author="Marian Meyer",
     ext_modules=cythonize(extensions),
-    install_requires=["ortools==" + ortools.__version__, "numpy"],
+    install_requires=["ortools==" + ortools.__version__, "numpy", "scipy"],
     description="Advanced wrapper around ortools",
     long_description=long_description,
     packages=find_packages()

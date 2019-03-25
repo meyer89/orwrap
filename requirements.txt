@@ -1,4 +1,5 @@
 ortools
 Cython
 numpy
+scipy
 setuptools
