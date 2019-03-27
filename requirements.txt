@@ -1,4 +1,4 @@
-ortools
+ortools==7.0.6546
 Cython
 numpy
 scipy
