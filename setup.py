@@ -19,12 +19,22 @@ else:
     extensions = []
 
 
+# read the long readme file
+try:
+    with open('README.rst', 'rb') as f:
+        long_description = f.read().decode('utf-8')
+except FileNotFoundError:
+    long_description = None
+
+
 # call the setup function for the compilation
 setup(
     name="orwrap",
     version="19.4.4",
     author="Marian Meyer",
     ext_modules=cythonize(extensions),
-    install_requires=["ortools==" + ortools.__version__, "numpy"],
+    install_requires=["ortools==" + ortools.__version__, "numpy", "scipy"],
+    description="Advanced wrapper around ortools",
+    long_description=long_description,
     packages=find_packages()
 )
