@@ -11,6 +11,11 @@ pytest:
 pylint:
   extends: .pylint
 
+build_sdist:
+  extends: .build_dist
+  variables:
+    GEN_DIST: sdist
+
 build_dist_3.6:
   extends: .build_dist
   image: python:3.6
@@ -24,14 +29,12 @@ build_dist_ppc_3.6:
   variables:
     CFLAGS: -std=c++11
   image: $CI_REGISTRY/docker/devpi-builder:3.6-ubuntu-ppc
-  allow_failure: true
 
 build_dist_ppc_3.7:
   extends: .build_dist
   variables:
     CFLAGS: -std=c++11
   image: $CI_REGISTRY/docker/devpi-builder:3.7-ubuntu-ppc
-  allow_failure: true
 
 release_dist:
   extends: .release_dist
