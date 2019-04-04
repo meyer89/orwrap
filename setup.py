@@ -22,7 +22,7 @@ else:
 # call the setup function for the compilation
 setup(
     name="orwrap",
-    version=ortools.__version__,
+    version="19.4.4",
     author="Marian Meyer",
     ext_modules=cythonize(extensions),
     install_requires=["ortools==" + ortools.__version__, "numpy"],

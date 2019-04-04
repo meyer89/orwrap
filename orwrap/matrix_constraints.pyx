@@ -4,7 +4,8 @@ from libcpp.vector cimport vector
 from cython.operator cimport dereference as deref, preincrement as inc
 from ortools.linear_solver.linear_solver_natural_api import OFFSET_KEY, CastToLinExp
 from ortools.linear_solver.pywraplp import Solver
-from scipy.sparse import isspmatrix, isspmatrix_coo, coo_matrix
+from scipy.sparse import isspmatrix, coo_matrix
+from numpy import argsort
 
 
 # Define the Swig struct which has the real pointer to MPVariable/MPSolver hidden inside
@@ -56,8 +57,10 @@ def MakeMatrixConstraint(solver, coefficients, lin_expr, double[:] lb, double[:]
         vec_lin_expr.push_back(pycoefs_to_linexpr(CastToLinExp(x).GetCoeffs()))
 
     if isspmatrix(coefficients):
-        coef_coo = coefficients if coefficients.format == 'coo' else coo_matrix(coefficients)
-        return MakeMatrixConstraintSparse(solver_ptr, coef_coo.data, coef_coo.col, coef_coo.row, vec_lin_expr, lb, ub)
+        A = coefficients if coefficients.format == 'coo' else coo_matrix(coefficients)
+        A.sum_duplicates()
+        idx = argsort(A.row)
+        return MakeMatrixConstraintSparse(solver_ptr, A.data[idx], A.col[idx], A.row[idx], vec_lin_expr, lb, ub)
     else:
         # call internal function
         return MakeMatrixConstraintDense(solver_ptr, coefficients, vec_lin_expr, lb, ub)
