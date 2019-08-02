@@ -7,7 +7,9 @@ from orwrap import Solver, pywraplp
 
 @pytest.mark.parametrize("coef, lb, ub", [
     (np.tri(100), np.zeros(100), np.ones(100)),
+    (np.tri(100, dtype=np.float32), np.zeros(100), np.ones(100)),
     (csr_matrix(np.tri(100)), np.zeros(100), np.ones(100)),
+    (csr_matrix(np.tri(100, dtype=np.float32)), np.zeros(100), np.ones(100)),
     (coo_matrix(np.tri(200)), np.zeros(200), np.ones(200)),
     (hstack((coo_matrix(np.tri(200)), eye(200))), np.zeros(200), np.ones(200))
 ])

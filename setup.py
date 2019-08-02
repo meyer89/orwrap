@@ -30,7 +30,7 @@ except FileNotFoundError:
 # call the setup function for the compilation
 setup(
     name="orwrap",
-    version="19.4.4",
+    version="19.8.2",
     author="Marian Meyer",
     ext_modules=cythonize(extensions),
     install_requires=["ortools==" + ortools.__version__, "numpy", "scipy"],

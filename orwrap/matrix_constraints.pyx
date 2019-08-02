@@ -1,11 +1,12 @@
 # cython: language_level=3
 # distutils: language=c++
+from cython cimport floating
 from libcpp.vector cimport vector
 from cython.operator cimport dereference as deref, preincrement as inc
 from ortools.linear_solver.linear_solver_natural_api import OFFSET_KEY, CastToLinExp
 from ortools.linear_solver.pywraplp import Solver
 from scipy.sparse import isspmatrix, coo_matrix
-from numpy import argsort
+from numpy import argsort, float64
 
 
 # Define the Swig struct which has the real pointer to MPVariable/MPSolver hidden inside
@@ -60,10 +61,16 @@ def MakeMatrixConstraint(solver, coefficients, lin_expr, double[:] lb, double[:]
         A = coefficients if coefficients.format == 'coo' else coo_matrix(coefficients)
         A.sum_duplicates()
         idx = argsort(A.row)
-        return MakeMatrixConstraintSparse(solver_ptr, A.data[idx], A.col[idx], A.row[idx], vec_lin_expr, lb, ub)
+        if A.data.dtype == float64:
+            return MakeMatrixConstraintSparse64(solver_ptr, A.data[idx], A.col[idx], A.row[idx], vec_lin_expr, lb, ub)
+        else:
+            return MakeMatrixConstraintSparse32(solver_ptr, A.data[idx], A.col[idx], A.row[idx], vec_lin_expr, lb, ub)
     else:
         # call internal function
-        return MakeMatrixConstraintDense(solver_ptr, coefficients, vec_lin_expr, lb, ub)
+        if coefficients.dtype == float64:
+            return MakeMatrixConstraintDense64(solver_ptr, coefficients, vec_lin_expr, lb, ub)
+        else:
+            return MakeMatrixConstraintDense32(solver_ptr, coefficients, vec_lin_expr, lb, ub)
 
 
 cdef LinExpr pycoefs_to_linexpr(coefs_in):
@@ -87,7 +94,15 @@ cdef LinExpr pycoefs_to_linexpr(coefs_in):
     return LinExpr(entries=entries, offset=offset)
 
 
-cdef MakeMatrixConstraintSparse(MPSolver* solver_ptr, double[:] coef_data, int[:] coef_col, int[:] coef_row, vector[LinExpr] lin_expr, double[:] lb, double[:] ub):
+cdef MakeMatrixConstraintSparse64(MPSolver* solver_ptr, double[:] coef_data, int[:] coef_col, int[:] coef_row, vector[LinExpr] lin_expr, double[:] lb, double[:] ub):
+    return MakeMatrixConstraintSparse(solver_ptr, coef_data, coef_col, coef_row, lin_expr, lb, ub)
+
+
+cdef MakeMatrixConstraintSparse32(MPSolver* solver_ptr, float[:] coef_data, int[:] coef_col, int[:] coef_row, vector[LinExpr] lin_expr, double[:] lb, double[:] ub):
+    return MakeMatrixConstraintSparse(solver_ptr, coef_data, coef_col, coef_row, lin_expr, lb, ub)
+
+
+cdef MakeMatrixConstraintSparse(MPSolver* solver_ptr, floating[:] coef_data, int[:] coef_col, int[:] coef_row, vector[LinExpr] lin_expr, double[:] lb, double[:] ub):
     # Extract the sizes of the matrix
     cdef Py_ssize_t n_coef = coef_data.shape[0]
 
@@ -128,7 +143,17 @@ cdef MakeMatrixConstraintSparse(MPSolver* solver_ptr, double[:] coef_data, int[:
 
 
 # Define a function which takes a dense matrix with coefficients and linear expression lists for each column
-cdef MakeMatrixConstraintDense(MPSolver* solver_ptr, double[:,:] coefficients, vector[LinExpr] lin_expr, double[:] lb, double[:] ub):
+cdef MakeMatrixConstraintDense64(MPSolver* solver_ptr, double[:, :] coefficients, vector[LinExpr] lin_expr, double[:] lb, double[:] ub):
+    return MakeMatrixConstraintDense(solver_ptr, coefficients, lin_expr, lb, ub)
+
+
+# Define a function which takes a dense matrix with coefficients and linear expression lists for each column
+cdef MakeMatrixConstraintDense32(MPSolver* solver_ptr, float[:, :] coefficients, vector[LinExpr] lin_expr, double[:] lb, double[:] ub):
+    return MakeMatrixConstraintDense(solver_ptr, coefficients, lin_expr, lb, ub)
+
+
+# Define a function which takes a dense matrix with coefficients and linear expression lists for each column
+cdef MakeMatrixConstraintDense(MPSolver* solver_ptr, floating[:, :] coefficients, vector[LinExpr] lin_expr, double[:] lb, double[:] ub):
     # Extract the sizes of the matrix
     cdef Py_ssize_t rows = coefficients.shape[0]
     cdef Py_ssize_t cols = coefficients.shape[1]
@@ -152,7 +177,7 @@ cdef MakeMatrixConstraintDense(MPSolver* solver_ptr, double[:,:] coefficients, v
                 # add the offset to the constraint offset
                 constraint_offset += coefficient_factor * lin_expr[col].offset
                 AddLinExpr(current_constraint, coefficient_factor, lin_expr[col])
-                    
+
         # Set the bounds with the constant offset in the expression
         current_constraint.SetBounds(lb[row] - constraint_offset, ub[row] - constraint_offset)
 
