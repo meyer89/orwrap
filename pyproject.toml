@@ -1,0 +1,21 @@
+[metadata]
+name = "orwrap"
+author = "Marian Meyer"
+version = "19.8.2"
+
+[project]
+dependencies = [
+  "ortools",
+  "numpy",
+  "scipy",
+  "cython",
+]
+
+[build-system]
+requires = [
+  "wheel",
+  "cython",
+  "ortools",
+  "setuptools",
+]
+build-backend = "setuptools.build_meta"
